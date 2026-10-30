@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Experiment history · MetaRecom{% endblock %}
+
+{% block content %}
+<section class="container section">
+  <h1>Experiment history</h1>
+  <p class="muted">{{ total }} past experiment{{ '' if total == 1 else 's' }} from <code>data/experiment_repo.json</code>.</p>
+
+  {% if records %}
+    <div class="card">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Dataset</th>
+              <th>Task</th>
+              <th>Model</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+              <tr>
+                <td><span class="muted">{{ r.timestamp[:19].replace('T',' ') }}</span></td>
+                <td>{{ r.dataset_name }}</td>
+                <td>{{ r.task_type }}</td>
+                <td><strong>{{ r.model_name }}</strong></td>
+                <td>{{ '%.4f'|format(r.score) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="card">
+      <p class="muted">No experiments yet. <a href="{{ url_for('app_page') }}">Run your first one →</a></p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

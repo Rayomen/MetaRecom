@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}MetaRecom — Smart ML model recommendation{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container hero-inner">
+    <span class="eyebrow">Meta-learning · Explainable AI</span>
+    <h1>Stop guessing which ML model to use.</h1>
+    <p class="lead">
+      MetaRecom analyses your dataset's statistical fingerprint, compares it
+      against past experiments, and recommends the best model — with a
+      confidence score and a plain-English explanation.
+    </p>
+    <div class="hero-actions">
+      <a href="{{ url_for('app_page') }}" class="btn btn-primary">Try it now →</a>
+      <a href="#how" class="btn btn-ghost">How it works</a>
+    </div>
+  </div>
+</section>
+
+<section id="how" class="container section">
+  <h2>How it works</h2>
+  <ol class="pipeline-list">
+    <li><strong>1. Meta-feature extraction</strong><span>25+ statistical properties of your dataset.</span></li>
+    <li><strong>2. Meta-learning</strong><span>k-NN over a repository of past experiments.</span></li>
+    <li><strong>3. Candidate selection</strong><span>Top-N models — no brute-force training.</span></li>
+    <li><strong>4. Preprocessing</strong><span>Encode, impute, scale automatically.</span></li>
+    <li><strong>5. Tuning</strong><span>RandomizedSearchCV per candidate.</span></li>
+    <li><strong>6. Evaluation</strong><span>Cross-validated metrics: accuracy, F1, AUC, R², RMSE.</span></li>
+    <li><strong>7. Explainability</strong><span>Confidence score + meta-feature insights.</span></li>
+    <li><strong>8. Repository update</strong><span>Each run improves future recommendations.</span></li>
+  </ol>
+</section>
+
+<section class="container section">
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h3>🔬 Statistical fingerprinting</h3>
+      <p>Skewness, kurtosis, class balance, mutual information, intrinsic dimension — and more.</p>
+    </div>
+    <div class="feature-card">
+      <h3>⚡ Smart candidate selection</h3>
+      <p>Avoid training every model. The meta-learner picks the most promising ones first.</p>
+    </div>
+    <div class="feature-card">
+      <h3>📊 Visual explanations</h3>
+      <p>Radar chart of your dataset, model comparison bars, confidence breakdown.</p>
+    </div>
+    <div class="feature-card">
+      <h3>🧠 Learns over time</h3>
+      <p>Every run is added to the experiment repository, sharpening future recommendations.</p>
+    </div>
+  </div>
+</section>
+
+<section class="container section cta-section">
+  <h2>Ready to find your best model?</h2>
+  <p class="muted">Upload a CSV — or try one of the bundled sample datasets.</p>
+  <a href="{{ url_for('app_page') }}" class="btn btn-primary">Open the recommender</a>
+</section>
+{% endblock %}

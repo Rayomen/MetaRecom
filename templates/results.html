@@ -1,0 +1,870 @@
+{% extends "base.html" %}
+
+{% block title %}
+Results — {{ result.dataset_name }} · MetaRecom
+{% endblock %}
+
+
+{% block extra_head %}
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+{% endblock %}
+
+
+{% block content %}
+
+<section class="container section">
+
+
+  <!-- ========================================================= -->
+  <!-- RESULTS HEADER                                           -->
+  <!-- ========================================================= -->
+
+  <div class="results-header">
+
+    <div>
+
+      <span class="eyebrow">
+        Recommendation
+      </span>
+
+      <h1>
+        {{
+          result.recommendation.best_model
+          or result.recommendation.model
+          or 'Best model'
+        }}
+      </h1>
+
+      <p class="muted">
+
+        Dataset:
+        <strong>{{ result.dataset_name }}</strong>
+
+        ·
+
+        Task:
+        <strong>{{ result.task_type or '—' }}</strong>
+
+      </p>
+
+    </div>
+
+
+    <div class="results-actions">
+
+      <a
+        href="{{ url_for('app_page') }}"
+        class="btn btn-ghost"
+      >
+        ← New run
+      </a>
+
+    </div>
+
+  </div>
+
+
+  <!-- ========================================================= -->
+  <!-- MAIN METRICS                                             -->
+  <!-- ========================================================= -->
+
+  <div class="metrics-grid">
+
+    {% set rec = result.recommendation %}
+
+
+    <div class="metric-card">
+
+      <div class="metric-label">
+        Best score
+      </div>
+
+      <div class="metric-value">
+
+        {{
+          '%.4f'|format(
+            rec.best_score
+            or rec.score
+            or 0
+          )
+        }}
+
+      </div>
+
+    </div>
+
+
+    <div class="metric-card">
+
+      <div class="metric-label">
+        Confidence
+      </div>
+
+      <div class="metric-value">
+
+        {% set conf =
+          result.explanation.confidence_score
+          if result.explanation
+          else 0
+        %}
+
+        {{
+          '%.0f'|format(
+            (conf or 0) * 100
+          )
+        }}%
+
+      </div>
+
+      <div class="metric-sub">
+
+        {{
+          result.explanation.confidence_label
+          if result.explanation
+          else ''
+        }}
+
+      </div>
+
+    </div>
+
+
+    <div class="metric-card">
+
+      <div class="metric-label">
+        Score gap to #2
+      </div>
+
+      <div class="metric-value">
+
+        {{
+          '%.4f'|format(
+            result.explanation.score_gap_to_second
+            if result.explanation
+            else 0
+          )
+        }}
+
+      </div>
+
+    </div>
+
+
+    <div class="metric-card">
+
+      <div class="metric-label">
+        Models evaluated
+      </div>
+
+      <div class="metric-value">
+
+        {{
+          result.all_results|length
+          if result.all_results
+          else 0
+        }}
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ========================================================= -->
+  <!-- EXECUTION AND OPTIMIZATION DETAILS                       -->
+  <!-- ========================================================= -->
+
+  {% set execution = result.execution if result.execution else {} %}
+  {% set best_params = result.recommendation.best_params if result.recommendation else {} %}
+
+  <div class="card">
+
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">Training details</span>
+        <h3>Optimization &amp; Compute</h3>
+      </div>
+      <span class="status-badge status-success">{{ result.recommendation.backend if result.recommendation and result.recommendation.backend else 'CPU' }} backend</span>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Requested mode</div>
+        <div class="metric-value">{{ (execution.requested_mode or 'auto')|upper }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Cross-validation folds used</div>
+        <div class="metric-value">{{ execution.cv_folds_used if execution.cv_folds_used is defined else '—' }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Tuning iterations used</div>
+        <div class="metric-value">{{ execution.tuning_iterations_used if execution.tuning_iterations_used is defined else 0 }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">GPU status</div>
+        <div class="metric-value" style="font-size:1rem;">{{ 'Probe passed' if execution.gpu_available else 'Not active' }}</div>
+      </div>
+    </div>
+
+    {% if execution.gpu_status %}
+      <p class="muted">{{ execution.gpu_status }}</p>
+    {% endif %}
+
+    {% if best_params %}
+      <h4>Best hyperparameters for {{ result.recommendation.model }}</h4>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Parameter</th><th>Selected value</th></tr></thead>
+          <tbody>
+            {% for key, value in best_params.items() %}
+              <tr><td>{{ key }}</td><td>{{ value }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No tuned hyperparameters were returned for this run. This can happen when tuning is disabled or the selected model has no search space.</p>
+    {% endif %}
+
+    <p class="muted">The GPU is used only by GPU-capable estimators (currently XGBoost when installed and CUDA training succeeds). Other models run on CPU; failed GPU training automatically retries on CPU.</p>
+
+  </div>
+
+
+  <!-- ========================================================= -->
+  <!-- PREPROCESSING SECTION                                    -->
+  <!-- ========================================================= -->
+
+  {% if result.preprocessing %}
+
+  {% set preprocessing = result.preprocessing %}
+
+  <div class="card preprocessing-results">
+
+    <div class="section-heading">
+
+      <div>
+
+        <span class="eyebrow">
+          Data Quality
+        </span>
+
+        <h3>
+          Dataset Preprocessing
+        </h3>
+
+      </div>
+
+
+      {% if preprocessing.applied %}
+
+        <span class="status-badge status-success">
+          ✓ Preprocessing Applied
+        </span>
+
+      {% else %}
+
+        <span class="status-badge">
+          Analysis Only
+        </span>
+
+      {% endif %}
+
+    </div>
+
+
+    <!-- ----------------------------------------------------- -->
+    <!-- DATA QUALITY SUMMARY                                 -->
+    <!-- ----------------------------------------------------- -->
+
+    {% if preprocessing.quality_report %}
+
+    {% set quality = preprocessing.quality_report %}
+
+    <div class="metrics-grid preprocessing-metrics">
+
+
+      <div class="metric-card">
+
+        <div class="metric-label">
+          Missing values detected
+        </div>
+
+        <div class="metric-value">
+
+          {{
+            quality.missing_values.total
+            if quality.missing_values
+            else 0
+          }}
+
+        </div>
+
+      </div>
+
+
+      <div class="metric-card">
+
+        <div class="metric-label">
+          Duplicate rows
+        </div>
+
+        <div class="metric-value">
+
+          {{
+            quality.duplicate_rows
+            if quality.duplicate_rows is defined
+            else 0
+          }}
+
+        </div>
+
+      </div>
+
+
+      <div class="metric-card">
+
+        <div class="metric-label">
+          Infinite values
+        </div>
+
+        <div class="metric-value">
+
+          {{
+            quality.infinite_values.total
+            if quality.infinite_values
+            else 0
+          }}
+
+        </div>
+
+      </div>
+
+
+      <div class="metric-card">
+
+        <div class="metric-label">
+          Constant columns
+        </div>
+
+        <div class="metric-value">
+
+          {{
+            quality.constant_columns.count
+            if quality.constant_columns
+            else 0
+          }}
+
+        </div>
+
+      </div>
+
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- ----------------------------------------------------- -->
+    <!-- BEFORE / AFTER                                       -->
+    <!-- ----------------------------------------------------- -->
+
+    {% if preprocessing.applied
+          and preprocessing.cleaning_summary %}
+
+    {% set summary = preprocessing.cleaning_summary %}
+
+    <div class="preprocessing-summary">
+
+      <h4>
+        Preprocessing Summary
+      </h4>
+
+
+      <div class="metrics-grid preprocessing-metrics">
+
+
+        <div class="metric-card">
+
+          <div class="metric-label">
+            Original rows
+          </div>
+
+          <div class="metric-value">
+
+            {{ summary.original_dataset.rows }}
+
+          </div>
+
+          <div class="metric-sub">
+
+            →
+            {{ summary.processed_dataset.rows }}
+            after preprocessing
+
+          </div>
+
+        </div>
+
+
+        <div class="metric-card">
+
+          <div class="metric-label">
+            Original columns
+          </div>
+
+          <div class="metric-value">
+
+            {{ summary.original_dataset.columns }}
+
+          </div>
+
+          <div class="metric-sub">
+
+            →
+            {{ summary.processed_dataset.columns }}
+            after preprocessing
+
+          </div>
+
+        </div>
+
+
+        <div class="metric-card">
+
+          <div class="metric-label">
+            Remaining missing values
+          </div>
+
+          <div class="metric-value">
+
+            {{ summary.processed_dataset.missing_values }}
+
+          </div>
+
+          <div class="metric-sub">
+
+            After preprocessing
+
+          </div>
+
+        </div>
+
+
+        <div class="metric-card">
+
+          <div class="metric-label">
+            Duplicate rows removed
+          </div>
+
+          <div class="metric-value">
+
+            {{
+              summary.cleaning_actions
+              .duplicate_rows_removed
+            }}
+
+          </div>
+
+        </div>
+
+
+      </div>
+
+
+      <!-- ----------------------------------------------- -->
+      <!-- CLEANING ACTIONS                                -->
+      <!-- ----------------------------------------------- -->
+
+      <div class="cleaning-actions">
+
+        <h4>
+          Actions Applied
+        </h4>
+
+        <ul class="insights-list">
+
+          {% if summary.cleaning_actions.normalized_missing_values > 0 %}
+
+          <li>
+
+            Normalized
+            <strong>
+              {{
+                summary.cleaning_actions
+                .normalized_missing_values
+              }}
+            </strong>
+            textual missing values.
+
+          </li>
+
+          {% endif %}
+
+
+          {% if summary.cleaning_actions.invalid_numeric_values_converted > 0 %}
+
+          <li>
+
+            Converted
+            <strong>
+              {{
+                summary.cleaning_actions
+                .invalid_numeric_values_converted
+              }}
+            </strong>
+            invalid numeric values.
+
+          </li>
+
+          {% endif %}
+
+
+          {% if summary.cleaning_actions.infinite_values_replaced > 0 %}
+
+          <li>
+
+            Replaced
+            <strong>
+              {{
+                summary.cleaning_actions
+                .infinite_values_replaced
+              }}
+            </strong>
+            infinite values.
+
+          </li>
+
+          {% endif %}
+
+
+          {% if summary.cleaning_actions.rows_removed_missing_target > 0 %}
+
+          <li>
+
+            Removed
+            <strong>
+              {{
+                summary.cleaning_actions
+                .rows_removed_missing_target
+              }}
+            </strong>
+            rows with missing target values.
+
+          </li>
+
+          {% endif %}
+
+
+          {% if summary.cleaning_actions.duplicate_rows_removed > 0 %}
+
+          <li>
+
+            Removed
+            <strong>
+              {{
+                summary.cleaning_actions
+                .duplicate_rows_removed
+              }}
+            </strong>
+            duplicate rows.
+
+          </li>
+
+          {% endif %}
+
+
+          {% if summary.cleaning_actions.empty_columns_removed %}
+
+          <li>
+
+            Removed
+            <strong>
+              {{
+                summary.cleaning_actions
+                .empty_columns_removed|length
+              }}
+            </strong>
+            completely empty column(s).
+
+          </li>
+
+          {% endif %}
+
+
+          {% if summary.cleaning_actions.constant_columns_removed %}
+
+          <li>
+
+            Removed
+            <strong>
+              {{
+                summary.cleaning_actions
+                .constant_columns_removed|length
+              }}
+            </strong>
+            constant feature column(s).
+
+          </li>
+
+          {% endif %}
+
+
+          {% if not summary.cleaning_actions.normalized_missing_values
+                and not summary.cleaning_actions.invalid_numeric_values_converted
+                and not summary.cleaning_actions.infinite_values_replaced
+                and not summary.cleaning_actions.rows_removed_missing_target
+                and not summary.cleaning_actions.duplicate_rows_removed
+                and not summary.cleaning_actions.empty_columns_removed
+                and not summary.cleaning_actions.constant_columns_removed %}
+
+          <li>
+
+            No major data quality issues required correction.
+
+          </li>
+
+          {% endif %}
+
+        </ul>
+
+      </div>
+
+    </div>
+
+    {% else %}
+
+    <p class="muted">
+
+      Dataset quality was analyzed, but the original dataset was used
+      without applying automatic preprocessing.
+
+    </p>
+
+    {% endif %}
+
+  </div>
+
+  {% endif %}
+
+
+  <!-- ========================================================= -->
+  <!-- WHY THIS MODEL                                           -->
+  <!-- ========================================================= -->
+
+  {% if result.explanation
+        and result.explanation.narrative %}
+
+  <div class="card narrative-card">
+
+    <h3>
+      Why this model?
+    </h3>
+
+    <p>
+      {{ result.explanation.narrative }}
+    </p>
+
+  </div>
+
+  {% endif %}
+
+
+  <!-- ========================================================= -->
+  <!-- DATASET INSIGHTS                                         -->
+  <!-- ========================================================= -->
+
+  {% if result.explanation
+        and result.explanation.meta_feature_insights %}
+
+  <div class="card">
+
+    <h3>
+      Dataset insights
+    </h3>
+
+    <ul class="insights-list">
+
+      {% for insight
+        in result.explanation.meta_feature_insights %}
+
+        <li>
+          {{ insight }}
+        </li>
+
+      {% endfor %}
+
+    </ul>
+
+  </div>
+
+  {% endif %}
+
+
+  <!-- ========================================================= -->
+  <!-- PREPROCESSING CHARTS                                     -->
+  <!-- ========================================================= -->
+
+  {% if result.preprocessing
+        and result.preprocessing.applied
+        and result.preprocessing.chart_data %}
+
+  <div class="chart-grid">
+
+    <div class="card chart-card">
+
+      <h3>
+        Dataset Before vs After Preprocessing
+      </h3>
+
+      <div
+        id="chart-preprocessing-before-after"
+        style="height:380px;"
+      ></div>
+
+    </div>
+
+
+    <div class="card chart-card">
+
+      <h3>
+        Preprocessing Actions Applied
+      </h3>
+
+      <div
+        id="chart-preprocessing-actions"
+        style="height:380px;"
+      ></div>
+
+    </div>
+
+  </div>
+
+  {% endif %}
+
+
+  <!-- ========================================================= -->
+  <!-- EXISTING MODEL CHARTS                                    -->
+  <!-- ========================================================= -->
+
+  <div class="chart-grid">
+
+    <div class="card chart-card">
+
+      <h3>
+        Model comparison
+      </h3>
+
+      <div
+        id="chart-models"
+        style="height:380px;"
+      ></div>
+
+    </div>
+
+
+    <div class="card chart-card">
+
+      <h3>
+        Dataset meta-feature radar
+      </h3>
+
+      <div
+        id="chart-radar"
+        style="height:380px;"
+      ></div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ========================================================= -->
+  <!-- ALL MODELS                                               -->
+  <!-- ========================================================= -->
+
+  {% if result.all_results %}
+
+  <div class="card">
+
+    <h3>
+      All evaluated models
+    </h3>
+
+    <div class="table-wrap">
+
+      <table class="data-table">
+
+        <thead>
+
+          <tr>
+
+            {% for k in result.all_results[0].keys() %}
+
+              <th>
+                {{ k }}
+              </th>
+
+            {% endfor %}
+
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          {% for row in result.all_results %}
+
+          <tr>
+
+            {% for k, v in row.items() %}
+
+            <td>
+
+              {% if v is number %}
+
+                {{ '%.4f'|format(v) }}
+
+              {% else %}
+
+                {{ v }}
+
+              {% endif %}
+
+            </td>
+
+            {% endfor %}
+
+          </tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+  {% endif %}
+
+
+</section>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+
+<script id="result-data" type="application/json">
+{{ result | tojson }}
+</script>
+
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+
+{% endblock %}
